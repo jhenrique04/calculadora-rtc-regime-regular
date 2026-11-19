@@ -28,11 +28,11 @@ encaminhadas exclusivamente pelos canais oficiais listados abaixo:
 
 Ao relatar um bug, inclua:
 
-- Versão da aplicação utilizada (campo `versao` no retorno da API ou `pom.xml`)
+- Versão da aplicação utilizada (campo `versao` no retorno da API ou `server/Cargo.toml`)
 - Endpoint afetado e payload de entrada utilizado
 - Comportamento observado vs. comportamento esperado
 - Logs de erro relevantes
-- Versão do Java e sistema operacional
+- Versão do Rust e sistema operacional
 
 ### Sugestão de Melhoria
 
@@ -55,11 +55,11 @@ Eventuais Pull Requests abertos por usuários externos serão encerrados sem mes
 
 ## 4. Padrões de Código
 
-- **Linguagem dos identificadores:** Português sem acentuação (ex: `calcularAliquota`, `buscarNcm`)
-- **Estilo:** convenções padrão Java (camelCase para métodos/variáveis, PascalCase para classes)
-- **JavaDoc:** obrigatório em classes de domínio, serviços e controllers
-- **Logs:** usar `SLF4J` com níveis adequados (`DEBUG`, `INFO`, `WARN`, `ERROR`). Proibido `System.out`
-- **Testes:** testes unitários obrigatórios; testes de integração quando aplicável
+- **Linguagem dos identificadores:** Português sem acentuação (ex: `calcular_aliquota`, `buscar_ncm`)
+- **Estilo:** convenções padrão Rust (snake_case para funções/variáveis, PascalCase para tipos), formatado com `cargo fmt`
+- **Análise estática:** `cargo clippy --workspace --all-targets -- -D warnings` sem alertas; sem `unwrap`/`expect` fora de testes
+- **Logs:** usar o logger do servidor com níveis adequados (`DEBUG`, `INFO`, `WARN`, `ERROR`). Proibido `println!` no servidor
+- **Testes:** testes unitários obrigatórios; mudanças de comportamento da API devem manter o teste de paridade (`task paridade`) passando
 
 ---
 

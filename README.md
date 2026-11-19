@@ -40,117 +40,96 @@ Exemplos de utilização da API estão em [docs/exemplos.md](docs/exemplos.md).
 
 ### Requisitos do Sistema
 
-- **Java**: versão 21 ou superior
-- **Maven**: não precisa ser instalado; o Maven Wrapper (`mvnw` / `mvnw.cmd`) baixa a versão necessária na primeira execução (requer internet)
+- **Rust**: toolchain estável (edition 2024), instalada via [rustup](https://rustup.rs)
 - **Git**: para clonar o repositório
+- **Task**: opcional, para os atalhos do `Taskfile.yml` ([taskfile.dev](https://taskfile.dev))
 - **Sistema Operacional**: Windows, macOS ou Linux
 
-### Dependências Principais
+### Organização
 
-O projeto utiliza as seguintes tecnologias:
+| Crate | Conteúdo |
+|---|---|
+| `core` (`rtc-core`) | Cálculo, regras de validação, consultas ao banco, geração e validação de XML |
+| `server` (`rtc-server`) | API HTTP, Swagger, CORS, métricas e logs |
+| `banco` (`rtc-banco`) | Gerador do banco SQLite a partir das migrações em `flyway/sql` |
 
-- **Spring Boot 3.5.16**: Framework principal da aplicação web
-- **SQLite**: Banco de dados embarcado
-- **Flyway**: Migração e versionamento do banco de dados
-- **OpenAPI / Springdoc 2.8.9**: Documentação interativa da API
+O SQLite é compilado junto (`rusqlite` com `bundled`); não é preciso instalar nada além do Rust.
 
 ---
 
 ## Instruções de Instalação
 
-### 1. Pré-requisitos
-
-Certifique-se de ter instalado o Java 21 ou superior e verifique as versões:
-
-```bash
-# Verificar versão do Java
-java -version
-```
-
-### 2. Clonar o Repositório
+### 1. Clonar o Repositório
 
 ```bash
 git clone https://github.com/ReceitaFederal/calculadora-rtc-regime-regular.git
 cd calculadora-rtc-regime-regular
 ```
 
-### 3. Gerar o Banco de Dados (obrigatório)
+### 2. Gerar o Banco de Dados (obrigatório)
 
-O perfil `offline` lê o banco `./calculadora/db/calculadora-pro.db`, definido por `application.db.filename` em `application-offline.yml`. O caminho é relativo à raiz do projeto e o banco é aberto em modo somente leitura.
+O servidor lê o banco `./calculadora/db/calculadora-pro.db`, relativo ao diretório de execução, em modo somente leitura. O gerador aplica as migrações de `flyway/sql` com as mesmas regras do Flyway (baseline, versões, checksums e callbacks).
 
-> **Atenção:** a aplicação só funciona se o banco estiver gerado. Sem ele, o perfil offline não inicia.
-
-Execute a partir da raiz do projeto.
-
-**Linux/macOS:**
+> **Atenção:** a aplicação só funciona se o banco estiver gerado.
 
 ```bash
-mkdir -p ./calculadora/db
-./mvnw flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf --batch-mode --errors
+task banco
 ```
 
-**Windows:**
-
-```bat
-mkdir calculadora\db
-mvnw.cmd flyway:migrate -Dflyway.configFiles=flyway\flyway-pro.conf --batch-mode --errors
-```
-
-Confirme que o arquivo foi criado com `ls -lah ./calculadora/db/calculadora-pro.db` (Linux/macOS) ou `dir calculadora\db\calculadora-pro.db` (Windows).
-
-### 4. Compilar e Executar os Testes
-
-Os testes exigem o banco gerado no passo 3, pois a maioria são testes de integração com o perfil `testes`.
-
-Executar todos os testes com relatório de cobertura (JaCoCo):
-
-**Linux/macOS:**
+Ou diretamente:
 
 ```bash
-./mvnw clean test jacoco:report
+cargo run --release -p rtc-banco --bin rtc-gerar-banco -- --sql flyway/sql --banco calculadora/db/calculadora-pro.db
 ```
 
-**Windows:**
-
-```bat
-mvnw.cmd clean test jacoco:report
-```
-
-O relatório de cobertura fica em `target/site/jacoco/index.html`.
-
-### 5. Executar a Aplicação com perfil Offline (spring-boot:run)
-
-**Linux/macOS:**
+### 3. Executar os Testes
 
 ```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=offline
+task test
 ```
 
-**Windows:**
+Ou `cargo test --workspace`. Os testes geram o próprio banco temporário, então não dependem do passo 2.
 
-```bat
-mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=offline"
-```
-
-A aplicação estará disponível em `http://localhost:8080/api`.
-
-### 6. Gerar o JAR e Executar com java -jar (perfil offline)
-
-**Linux/macOS:**
+O teste `server/tests/paridade.rs` sobe o servidor e reenvia mais de 1800 requisições gravadas da versão Java, comparando status, cabeçalhos e corpo das respostas. Para rodar só ele:
 
 ```bash
-./mvnw clean package
-java -Dspring.profiles.active=offline -jar target/api-regime-geral.jar
+task paridade
 ```
 
-**Windows:**
+### 4. Executar a Aplicação
 
-```bat
-mvnw.cmd clean package
-java "-Dspring.profiles.active=offline" -jar target\api-regime-geral.jar
+```bash
+task run
 ```
 
-Execute o JAR a partir da raiz do projeto, para que `./calculadora/db` seja encontrado.
+Ou `cargo run --release -p rtc-server`. A aplicação estará disponível em `http://localhost:8080/api`; health e métricas (formato Actuator) ficam na porta `9101`.
+
+Variáveis de ambiente:
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `SERVER_PORT` | `8080` | Porta da API |
+| `MANAGEMENT_SERVER_PORT` | `9101` | Porta de métricas e health |
+| `APPLICATION_DB_FILENAME` | `calculadora-pro.db` | Nome do arquivo do banco em `./calculadora/db` |
+| `LOGGING_LEVEL_ROOT` | `INFO` | Nível mínimo de log |
+| `VERSAO_OFFLINE_URL` | serviço piloto | URL consultada para comparar a versão local com a publicada |
+
+### 5. Gerar o Binário
+
+```bash
+task build
+```
+
+Os binários `rtc-server` e `rtc-gerar-banco` ficam em `bin/`. Execute o servidor a partir de um diretório que contenha `./calculadora/db`.
+
+### 6. Docker
+
+```bash
+docker build -t calculadora-rtc-regime-regular .
+docker run -p 8080:8080 calculadora-rtc-regime-regular
+```
+
+A imagem já sai com o banco gerado.
 
 ---
 
