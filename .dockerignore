@@ -1,0 +1,12 @@
+# Environment
+.env
+
+# Build artifacts
+target/
+bin/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*~

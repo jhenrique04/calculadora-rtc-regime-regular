@@ -1,0 +1,48 @@
+version: '3'
+
+vars:
+  BIN_DIR: bin
+  IMAGE_NAME: calculadora-rtc-regime-regular
+
+dotenv:
+  - ".env"
+
+tasks:
+  default:
+    desc: Lista as tarefas disponíveis
+    cmd: task --list
+    silent: true
+
+  banco:
+    desc: Gera o banco SQLite a partir das migrações em flyway/sql
+    cmd: cargo run --release -p rtc-banco --bin rtc-gerar-banco -- --sql flyway/sql --banco calculadora/db/calculadora-pro.db
+
+  run:
+    desc: Gera o banco e inicia o servidor
+    deps: [banco]
+    cmd: cargo run --release -p rtc-server
+
+  test:
+    desc: Roda todos os testes, incluindo a paridade com a versão Java
+    cmd: cargo test --workspace
+
+  paridade:
+    desc: Compara as respostas do servidor com as gravadas da versão Java
+    cmd: cargo test -p rtc-server --test paridade
+
+  check:
+    desc: Formata e analisa o projeto
+    cmds:
+      - cargo fmt --all
+      - cargo clippy --workspace --all-targets -- -D warnings
+
+  build:
+    desc: Compila o servidor e o gerador do banco para a plataforma atual
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - cargo build --release -p rtc-server -p rtc-banco
+      - cp target/release/rtc-server target/release/rtc-gerar-banco {{.BIN_DIR}}/
+
+  docker:
+    desc: Build da imagem Docker (já com o banco gerado)
+    cmd: docker build -t {{.IMAGE_NAME}} .
