@@ -1,5 +1,7 @@
 # Calculadora de Tributos
 
+> Versão em Rust da [calculadora da Receita Federal](https://github.com/ReceitaFederal/calculadora-rtc-regime-regular), originalmente em Java/Spring Boot. Os endpoints, mensagens e respostas são os mesmos, verificados pelo teste de paridade com a versão Java.
+
 ## Descrição do Projeto
 
 API REST que realiza o cálculo da CBS, do IBS e do Imposto Seletivo (Reforma Tributária do Consumo — LC 214/2025) nas operações do regime geral, consulta as tabelas oficiais usadas no cálculo e gera e valida os grupos de tributação dos documentos fiscais eletrônicos.
